@@ -39,6 +39,18 @@ public abstract class EC2ComputerLauncher extends ComputerLauncher {
                         return;
                 }
             }
+            
+            while(computer.getState() == InstanceState.RUNNING && addressPending(computer)) {
+                logger.println("Waiting for instance ip address (currently 0.0.0.0)");
+                Thread.sleep(5000); // check every 5 secs
+                computer.flushInstanceCache();
+            }
+            
+            if (computer.getState() != InstanceState.RUNNING) {
+                // abort
+                logger.println("The instance "+computer.getInstanceId()+" appears to be shut down. Aborting launch.");
+                return;
+            }
 
             launch(computer, logger, computer.describeInstance());
         } catch (EC2Exception e) {
@@ -51,6 +63,10 @@ public abstract class EC2ComputerLauncher extends ComputerLauncher {
             e.printStackTrace(listener.error(e.getMessage()));
         }
 
+    }
+
+    private boolean addressPending(EC2Computer computer) throws EC2Exception {
+        return "0.0.0.0".equals(computer.describeInstance().getDnsName().trim());
     }
 
     /**
