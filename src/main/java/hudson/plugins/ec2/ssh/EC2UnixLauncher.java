@@ -169,7 +169,9 @@ public class EC2UnixLauncher extends EC2ComputerLauncher {
                 // Get root working, so we can scp in etc.
                 Session sess = bootstrapConn.openSession();
                 sess.requestDumbPTY(); // so that the remote side bundles stdout and stderr
-                sess.execCommand(computer.getRootCommandPrefix() + "cp ~/.ssh/authorized_keys /root/.ssh/");
+                sess.execCommand("cp ~/.ssh/authorized_keys /tmp/ && "
+                                 + computer.getRootCommandPrefix() + "chown root:root /tmp/authorized_keys && "
+                                 + computer.getRootCommandPrefix() + "mv /tmp/authorized_keys /root/.ssh/");
                 sess.getStdin().close(); // nothing to write here
                 sess.getStderr().close(); // we are not supposed to get anything from stderr
                 IOUtils.copy(sess.getStdout(), logger);
