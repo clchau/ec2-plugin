@@ -201,9 +201,11 @@ public abstract class EC2Cloud extends Cloud {
     public Collection<PlannedNode> provision(Label label, int excessWorkload) {
         try {
 
-            final SlaveTemplate t = getTemplate(label);
-
             List<PlannedNode> r = new ArrayList<PlannedNode>();
+            final SlaveTemplate t = getTemplate(label);
+            if (t == null) {
+                return r; // unknown template (label not bound to this cloud)
+            }
             for( ; excessWorkload>0; excessWorkload-- ) {
                 if(countCurrentEC2Slaves()>=instanceCap) {
                     LOGGER.log(Level.INFO, "Instance cap reached, not provisioning.");
