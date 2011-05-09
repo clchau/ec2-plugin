@@ -96,11 +96,21 @@ public final class EC2Slave extends Slave {
             Jec2 ec2 = EC2Cloud.get().connect();
             ec2.terminateInstances(Collections.singletonList(getInstanceId()));
             LOGGER.info("Terminated EC2 instance: "+getInstanceId());
-            Hudson.getInstance().removeNode(this);
+
         } catch (EC2Exception e) {
             LOGGER.log(Level.WARNING,"Failed to terminate EC2 instance: "+getInstanceId(),e);
-        } catch (IOException e) {
-            LOGGER.log(Level.WARNING,"Failed to terminate EC2 instance: "+getInstanceId(),e);
+        } finally {
+            Thread removeNodeThread = new Thread(Thread.currentThread().getThreadGroup(), "Remove Node " + getDisplayName()) {
+                public void run() {
+                    try {
+                        Hudson.getInstance().removeNode(EC2Slave.this);
+                    } catch (IOException e) {
+                        LOGGER.log(Level.WARNING,"Failed to remove EC2 node: "+getInstanceId(), e);
+                    }
+                }
+            };
+            removeNodeThread.setContextClassLoader(Thread.currentThread().getContextClassLoader());
+            removeNodeThread.start();
         }
     }
 
