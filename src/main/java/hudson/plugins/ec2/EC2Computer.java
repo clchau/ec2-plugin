@@ -12,6 +12,7 @@ import org.kohsuke.stapler.StaplerResponse;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Date;
 
 /**
  * @author Kohsuke Kawaguchi
@@ -21,6 +22,8 @@ public class EC2Computer extends SlaveComputer {
      * Cached description of this EC2 instance. Lazily fetched.
      */
     private volatile Instance ec2InstanceDescription;
+	private Instance _cachedInstanceDescription;
+	private long _cachedInstanceDescriptionTimestamp;
 
     public EC2Computer(EC2Slave slave) {
         super(slave);
@@ -91,7 +94,11 @@ public class EC2Computer extends SlaveComputer {
     }
 
     private ReservationDescription.Instance _describeInstance() throws EC2Exception {
-        return EC2Cloud.get().connect().describeInstances(Collections.<String>singletonList(getNode().getInstanceId())).get(0).getInstances().get(0);
+    	if (_cachedInstanceDescription == null || _cachedInstanceDescriptionTimestamp < System.currentTimeMillis() - 2000) {
+    		_cachedInstanceDescription = EC2Cloud.get().connect().describeInstances(Collections.<String>singletonList(getNode().getInstanceId())).get(0).getInstances().get(0);
+    		_cachedInstanceDescriptionTimestamp = System.currentTimeMillis();
+    	}
+		return _cachedInstanceDescription;
     }
 
     /**
