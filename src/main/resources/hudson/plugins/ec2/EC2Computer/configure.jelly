@@ -47,6 +47,10 @@ THE SOFTWARE.
           <f:textbox />
         </f:entry>
         
+        <f:entry title="${%Security Group}" field="securityGroup">
+          <f:textbox />
+        </f:entry>
+        
         <f:entry title="${%Remote FS root}" field="remoteFS">
           <f:textbox />
         </f:entry>

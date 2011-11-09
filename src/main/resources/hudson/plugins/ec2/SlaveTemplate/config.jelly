@@ -29,6 +29,9 @@ THE SOFTWARE.
   <f:entry title="${%Instance Type}" field="type">
     <f:enum>${it.name()}</f:enum>
   </f:entry>
+  <f:entry title="${%Security Group}" help="/help/system-config/master-slave/help-security.html" field="securityGroup">
+    <f:textbox />
+  </f:entry>
   <f:entry title="${%Description}" help="/help/system-config/master-slave/description.html" field="description">
     <f:textbox />
   </f:entry>

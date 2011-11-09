@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.jenkins-ci.plugins</groupId>
     <artifactId>plugin</artifactId>
-    <version>1.399</version>
+    <version>1.437</version>
   </parent>
   
   <artifactId>ec2</artifactId>
@@ -14,8 +14,8 @@
   <url>http://wiki.jenkins-ci.org/display/JENKINS/Amazon+EC2+Plugin</url>
 
   <scm>
-    <connection>scm:git:git://github.com/jenkinsci/ec2-plugin.git</connection>
-    <developerConnection>scm:git:git@github.com:jenkinsci/ec2-plugin.git</developerConnection>
+    <connection>scm:git:git://github.com/krimsonkla/ec2-plugin.git</connection>
+    <developerConnection>scm:git:git@github.com:krimsonkla/ec2-plugin.git</developerConnection>
   </scm>
 
   <dependencies>
@@ -53,6 +53,12 @@
       <id>kohsuke</id>
       <name>Kohsuke Kawaguchi</name>
       <email>kkawaguchi@cloudbees.com</email>
+    </developer>
+    
+    <developer>
+      <id>krimsonkla</id>
+      <name>Jason Risch</name>
+      <email>jason.risch@sage.com</email>
     </developer>
   </developers>
 

@@ -5,6 +5,7 @@ import com.xerox.amazonws.ec2.ImageDescription;
 import com.xerox.amazonws.ec2.InstanceType;
 import com.xerox.amazonws.ec2.Jec2;
 import com.xerox.amazonws.ec2.KeyPairInfo;
+import com.xerox.amazonws.ec2.LaunchConfiguration;
 import com.xerox.amazonws.ec2.ReservationDescription.Instance;
 import hudson.model.Describable;
 import hudson.model.Descriptor;
@@ -23,6 +24,7 @@ import org.kohsuke.stapler.QueryParameter;
 import javax.servlet.ServletException;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -36,6 +38,7 @@ import java.util.Set;
 public class SlaveTemplate implements Describable<SlaveTemplate> {
     public final String ami;
     public final String description;
+    public final String securityGroup;
     public final String remoteFS;
     public final String sshPort;
     public final InstanceType type;
@@ -51,10 +54,11 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
     private transient /*almost final*/ Set<LabelAtom> labelSet;
 
     @DataBoundConstructor
-    public SlaveTemplate(String ami, String remoteFS, String sshPort, InstanceType type, String labelString, String description, String initScript, String userData, String numExecutors, String remoteAdmin, String rootCommandPrefix, String jvmopts) {
+    public SlaveTemplate(String ami, String remoteFS, String sshPort, String securityGroup, InstanceType type, String labelString, String description, String initScript, String userData, String numExecutors, String remoteAdmin, String rootCommandPrefix, String jvmopts) {
         this.ami = ami;
         this.remoteFS = remoteFS;
         this.sshPort = sshPort;
+        this.securityGroup=securityGroup;
         this.type = type;
         this.labels = Util.fixNull(labelString);
         this.description = description;
@@ -130,7 +134,17 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
             KeyPairInfo keyPair = parent.getPrivateKey().find(ec2);
             if(keyPair==null)
                 throw new EC2Exception("No matching keypair found on EC2. Is the EC2 private key a valid one?");
-            Instance inst = ec2.runInstances(ami, 1, 1, Collections.<String>emptyList(), userData, keyPair.getKeyName(), type).getInstances().get(0);
+             LaunchConfiguration configuration=new LaunchConfiguration(ami);
+             configuration.setMinCount(1);
+             configuration.setMaxCount(1);
+             List<String> sGroups=new ArrayList<String>();
+             sGroups.add(securityGroup);
+             configuration.setSecurityGroup(sGroups);
+             configuration.setUserData(userData.getBytes());
+             configuration.setKeyName(keyPair.getKeyName());
+             configuration.setInstanceType(type);
+             
+            Instance inst = ec2.runInstances(configuration) .getInstances().get(0);
             return newSlave(inst);
         } catch (FormException e) {
             throw new AssertionError(); // we should have discovered all configuration issues upfront
@@ -138,7 +152,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
     }
 
     private EC2Slave newSlave(Instance inst) throws FormException, IOException {
-        return new EC2Slave(inst.getInstanceId(), description, remoteFS, getSshPort(), getNumExecutors(), labels, initScript, remoteAdmin, rootCommandPrefix, jvmopts);
+        return new EC2Slave(inst.getInstanceId(),securityGroup, description, remoteFS, getSshPort(), getNumExecutors(), labels, initScript, remoteAdmin, rootCommandPrefix, jvmopts);
     }
 
     /**
