@@ -1,5 +1,6 @@
 package hudson.plugins.ec2;
 
+import com.xerox.amazonws.ec2.EC2Exception;
 import hudson.model.Descriptor;
 import hudson.slaves.RetentionStrategy;
 import hudson.util.TimeUnit2;
@@ -13,20 +14,46 @@ import java.util.logging.Logger;
  * @author Kohsuke Kawaguchi
  */
 public class EC2RetentionStrategy extends RetentionStrategy<EC2Computer> {
+
     @DataBoundConstructor
     public EC2RetentionStrategy() {
     }
 
     public synchronized long check(EC2Computer c) {
+
         if (c.isIdle() && !disabled) {
-            // TODO: really think about the right strategy here
-            final long idleMilliseconds = System.currentTimeMillis() - c.getIdleStartMilliseconds();
-            if (idleMilliseconds > TimeUnit2.MINUTES.toMillis(30)) {
-                LOGGER.info("Disconnecting "+c.getName());
-                c.getNode().terminate();
+
+            long minToNextBilledHour = -1;
+            try {
+                long minUptime = TimeUnit2.MILLISECONDS.toMinutes(c.getUptime());
+                minToNextBilledHour = 60 - (minUptime % 60);
+            } catch (EC2Exception e) {
+                LOGGER.warning("Unable to calculate time till next billing hour: " + e.getMessage());
+            }
+
+            final long idleMin =
+                TimeUnit2.MILLISECONDS.toMinutes(System.currentTimeMillis() - c.getIdleStartMilliseconds());
+            if (minToNextBilledHour > -1) {
+                final long minIdle = 5;
+                final long minBill = 5;
+                if (minToNextBilledHour <= minBill) {
+                    if (idleMin > minIdle) {
+                        LOGGER.info("Disconnecting " + c.getName() + " with " + minToNextBilledHour
+                            + "m till full hour and being idle for " + idleMin + "m");
+                        c.getNode().terminate();
+                    }
+                }
+            } else {
+                // default original - fallback - strategy
+                final long minIdle = 10;
+                if (idleMin > minIdle) {
+                    LOGGER.info("Disconnecting " + c.getName() + " after being idle for " + idleMin + "m");
+                    c.getNode().terminate();
+                }
             }
         }
-        return 1;
+
+        return 1; // re-check every minute
     }
 
     /**
