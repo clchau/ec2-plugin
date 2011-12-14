@@ -47,7 +47,7 @@ import java.util.logging.Level;
 
 
 /**
- * Hudson's view of EC2. 
+ * Hudson's view of EC2.
  *
  * @author Kohsuke Kawaguchi
  */
@@ -65,7 +65,7 @@ public abstract class EC2Cloud extends Cloud {
     private transient KeyPairInfo usableKeyPair;
 
     private transient Jec2 connection;
-    
+
     protected EC2Cloud(String id, String accessId, String secretKey, String privateKey, String instanceCapStr, List<SlaveTemplate> templates) {
         super(id);
         this.accessId = accessId.trim();
@@ -124,8 +124,11 @@ public abstract class EC2Cloud extends Cloud {
      */
     public SlaveTemplate getTemplate(Label label) {
         for (SlaveTemplate t : templates)
-        	if(label == null || label.matches(t.getLabelSet()))
+        	if(label == null || label.matches(t.getLabelSet())) {
+                LOGGER.log(Level.FINE, "slave template '" + t.getDisplayName() + " matches: " + label.getExpression());
                 return t;
+            }
+        LOGGER.log(Level.FINE, "no slave template matching for:" + label.getExpression());
         return null;
     }
 
