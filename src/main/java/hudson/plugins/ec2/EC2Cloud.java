@@ -122,12 +122,14 @@ public abstract class EC2Cloud extends Cloud {
     /**
      * Gets {@link SlaveTemplate} that has the matching {@link Label}.
      */
-    public SlaveTemplate getTemplate(Label label) {
+    public SlaveTemplate getTemplate(Label label) 
+    {
         for (SlaveTemplate t : templates)
+        {
         	if(label == null || label.matches(t.getLabelSet())) {
-                LOGGER.log(Level.FINE, "slave template '" + t.getDisplayName() + " matches: " + label.getExpression());
                 return t;
             }
+        }
         LOGGER.log(Level.FINE, "no slave template matching for:" + label.getExpression());
         return null;
     }
