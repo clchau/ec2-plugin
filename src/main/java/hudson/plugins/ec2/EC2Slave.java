@@ -12,6 +12,7 @@ import hudson.slaves.NodeProperty;
 import hudson.Extension;
 import hudson.Util;
 
+import hudson.plugins.ec2.ssh.LauncherFactory;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -26,6 +27,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
  * @author Kohsuke Kawaguchi
  */
 public final class EC2Slave extends Slave {
+
     /**
      * Comes from {@link SlaveTemplate#initScript}.
      */
@@ -34,21 +36,20 @@ public final class EC2Slave extends Slave {
     public final String rootCommandPrefix; // e.g. 'sudo'
     public final String jvmopts; //e.g. -Xmx1g
     public final String securityGroup;
-
     /**
      * For data read from old Hudson, this is 0, so we use that to indicate 22.
      */
     private final int sshPort;
-
+    
     public EC2Slave(String instanceId, String securityGroup, String description, String remoteFS, int sshPort, int numExecutors, String labelString, String initScript, String remoteAdmin, String rootCommandPrefix, String jvmopts) throws FormException, IOException {
         this(instanceId, securityGroup, description, remoteFS, sshPort, numExecutors, Mode.NORMAL, labelString, initScript, Collections.<NodeProperty<?>>emptyList(), remoteAdmin, rootCommandPrefix, jvmopts);
     }
-
+    
     @DataBoundConstructor
     public EC2Slave(String instanceId, String securityGroup, String description, String remoteFS, int sshPort, int numExecutors, Mode mode, String labelString, String initScript, List<? extends NodeProperty<?>> nodeProperties, String remoteAdmin, String rootCommandPrefix, String jvmopts) throws FormException, IOException {
-        super(instanceId, description, remoteFS, numExecutors, mode, labelString, new EC2UnixLauncher(), new EC2RetentionStrategy(), nodeProperties);
-        this.initScript  = initScript;
-        this.securityGroup=securityGroup;
+        super(instanceId, description, remoteFS, numExecutors, mode, labelString, LauncherFactory.getLauncher(labelString), new EC2RetentionStrategy(), nodeProperties);
+        this.initScript = initScript;
+        this.securityGroup = securityGroup;
         this.remoteAdmin = remoteAdmin;
         this.rootCommandPrefix = rootCommandPrefix;
         this.jvmopts = jvmopts;
@@ -59,7 +60,7 @@ public final class EC2Slave extends Slave {
      * Constructor for debugging.
      */
     public EC2Slave(String instanceId) throws FormException, IOException {
-        this(instanceId,"default","debug","/tmp/hudson", 22, 1, Mode.NORMAL, "debug", "", Collections.<NodeProperty<?>>emptyList(), null, null, null);
+        this(instanceId, "default", "debug", "/tmp/hudson", 22, 1, Mode.NORMAL, "debug", "", Collections.<NodeProperty<?>>emptyList(), null, null, null);
     }
 
     /**
@@ -67,12 +68,18 @@ public final class EC2Slave extends Slave {
      */
     /*package*/ static int toNumExecutors(InstanceType it) {
         switch (it) {
-        case DEFAULT:       return 1;
-        case MEDIUM_HCPU:   return 5;
-        case LARGE:         return 4;
-        case XLARGE:        return 8;
-        case XLARGE_HCPU:   return 20;
-        default:            throw new AssertionError();
+            case DEFAULT:
+                return 1;
+            case MEDIUM_HCPU:
+                return 5;
+            case LARGE:
+                return 4;
+            case XLARGE:
+                return 8;
+            case XLARGE_HCPU:
+                return 20;
+            default:
+                throw new AssertionError();
         }
     }
 
@@ -82,7 +89,7 @@ public final class EC2Slave extends Slave {
     public String getInstanceId() {
         return getNodeName();
     }
-
+    
     @Override
     public Computer createComputer() {
         return new EC2Computer(this);
@@ -95,17 +102,18 @@ public final class EC2Slave extends Slave {
         try {
             Jec2 ec2 = EC2Cloud.get().connect();
             ec2.terminateInstances(Collections.singletonList(getInstanceId()));
-            LOGGER.info("Terminated EC2 instance: "+getInstanceId());
-
+            LOGGER.info("Terminated EC2 instance: " + getInstanceId());
+            
         } catch (EC2Exception e) {
-            LOGGER.log(Level.WARNING,"Failed to terminate EC2 instance: "+getInstanceId(),e);
+            LOGGER.log(Level.WARNING, "Failed to terminate EC2 instance: " + getInstanceId(), e);
         } finally {
             Thread removeNodeThread = new Thread(Thread.currentThread().getThreadGroup(), "Remove Node " + getDisplayName()) {
+
                 public void run() {
                     try {
                         Hudson.getInstance().removeNode(EC2Slave.this);
                     } catch (IOException e) {
-                        LOGGER.log(Level.WARNING,"Failed to remove EC2 node: "+getInstanceId(), e);
+                        LOGGER.log(Level.WARNING, "Failed to remove EC2 node: " + getInstanceId(), e);
                     }
                 }
             };
@@ -113,41 +121,44 @@ public final class EC2Slave extends Slave {
             removeNodeThread.start();
         }
     }
-
+    
     String getRemoteAdmin() {
-        if (remoteAdmin == null || remoteAdmin.length() == 0)
+        if (remoteAdmin == null || remoteAdmin.length() == 0) {
             return "root";
+        }
         return remoteAdmin;
     }
-
+    
     String getRootCommandPrefix() {
-        if (rootCommandPrefix == null || rootCommandPrefix.length() == 0)
+        if (rootCommandPrefix == null || rootCommandPrefix.length() == 0) {
             return "";
+        }
         return rootCommandPrefix + " ";
     }
-
+    
     String getJvmopts() {
         return Util.fixNull(jvmopts);
     }
-
+    
     String getSecurityGroup() {
         return Util.fixNull(securityGroup);
     }
-    public int getSshPort() {
-        return sshPort!=0 ? sshPort : 22;
-    }
 
+    public int getSshPort() {
+        return sshPort != 0 ? sshPort : 22;
+    }
+    
     @Extension
     public static final class DescriptorImpl extends SlaveDescriptor {
+
         public String getDisplayName() {
             return "Amazon EC2";
         }
-
+        
         @Override
         public boolean isInstantiable() {
             return false;
         }
     }
-
     private static final Logger LOGGER = Logger.getLogger(EC2Slave.class.getName());
 }
