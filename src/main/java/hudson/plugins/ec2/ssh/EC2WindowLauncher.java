@@ -81,6 +81,8 @@ public class EC2WindowLauncher extends EC2Launcher {
                 logger.println("Waiting for SSH to come up. Sleeping 5.");
                 Thread.sleep(5000);
             }
+            else
+                return conn;
         }
     }
 
